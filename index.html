@@ -1,1060 +1,843 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="h-full bg-slate-900 text-slate-100">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能员工打卡与工时加班管理系统</title>
+    <title>WorkPunch Pro - 考勤打卡与管理系统</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-        .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        .glass-card {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        /* 自定义滚动条 */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
-        ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.4); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.6); }
     </style>
 </head>
-<body class="h-full flex flex-col overflow-x-hidden antialiased selection:bg-blue-500 selection:text-white">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-500 selection:text-white">
 
-    <header class="glass-panel sticky top-0 z-50 px-4 py-3 border-b border-slate-800">
-        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3">
+    <!-- 顶栏 Navigation -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <div class="p-2 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl shadow-lg shadow-blue-500/20">
-                    <i data-lucide="clock" class="w-6 h-6 text-white"></i>
+                <div class="p-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30">
+                    <i data-lucide="clock" class="w-6 h-6"></i>
                 </div>
                 <div>
-                    <h1 class="text-lg font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-                        WorkPunch Pro 考勤系统
-                    </h1>
-                    <p class="text-xs text-slate-400">防作弊 GPS / Wi-Fi / 照片精准考勤打卡</p>
+                    <h1 class="text-lg font-bold text-white tracking-wide">WorkPunch Pro 考勤系统</h1>
+                    <p class="text-xs text-slate-400">GPS / Wi-Fi / 现场拍照防伪打卡</p>
                 </div>
             </div>
 
-            <!-- 右侧控制器：模拟控制台 -->
-            <div class="flex items-center space-x-3">
-                <!-- 角色切换组件 -->
-                <div class="bg-slate-950/80 p-1 rounded-xl border border-slate-800 flex items-center text-xs font-medium">
-                    <button id="btn-role-employee" onclick="switchRole('employee')" 
-                        class="px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 bg-blue-600 text-white shadow-md">
-                        <i data-lucide="user" class="w-3.5 h-3.5"></i>
-                        <span>员工端</span>
-                    </button>
-                    <button id="btn-role-admin" onclick="switchRole('admin')" 
-                        class="px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 text-slate-400 hover:text-white">
-                        <i data-lucide="shield" class="w-3.5 h-3.5"></i>
-                        <span>管理员后台</span>
-                    </button>
-                </div>
-
-                <!-- 重置数据按钮 -->
-                <button onclick="resetSystemData()" title="重置为初始示例数据" 
-                    class="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800/60 rounded-lg border border-slate-800 transition">
-                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            <!-- 端切换 -->
+            <div class="flex items-center space-x-2 bg-slate-800 p-1 rounded-xl border border-slate-700">
+                <button id="btn-staff-view" onclick="switchView('staff')" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 bg-blue-600 text-white shadow-lg shadow-blue-500/20">
+                    <i data-lucide="user" class="w-4 h-4 inline mr-1"></i> 员工端
+                </button>
+                <button id="btn-admin-view" onclick="openAdminAuthModal()" class="px-4 py-1.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all duration-200">
+                    <i data-lucide="shield-check" class="w-4 h-4 inline mr-1"></i> 管理员后台
                 </button>
             </div>
         </div>
     </header>
 
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+    <!-- 主容器 Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        <!-- ==================== 1. 员工端视图 ==================== -->
-        <div id="view-employee" class="space-y-6">
-            
-            <!-- 切换模拟员工账号 -->
-            <div class="glass-panel p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
-                <div class="flex items-center space-x-3">
-                    <div id="emp-avatar" class="w-10 h-10 rounded-full bg-indigo-600/30 border border-indigo-400/30 flex items-center justify-center text-indigo-300 font-bold text-lg">
-                        张
+        <!-- ==================== 1. 员工打卡端 ==================== -->
+        <section id="view-staff" class="space-y-6">
+            <!-- 员工选择与身份面板 -->
+            <div class="bg-slate-900/90 rounded-2xl border border-slate-800 p-5 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <div id="user-avatar" class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-bold text-xl text-white shadow-md">
+                        李
                     </div>
                     <div>
                         <div class="flex items-center space-x-2">
-                            <span id="emp-name" class="font-semibold text-white">张伟</span>
-                            <span id="emp-dept" class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">仓储物流部</span>
+                            <h2 id="user-name" class="text-lg font-bold text-white">李娜</h2>
+                            <span id="user-dept" class="px-2 py-0.5 rounded text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">仓储物流部</span>
                         </div>
-                        <p class="text-xs text-slate-400 mt-0.5">工号: <span id="emp-id">EMP1001</span></p>
+                        <p id="user-emp-id" class="text-xs text-slate-400 mt-1">工号: EMP1002</p>
                     </div>
                 </div>
 
-                <div class="flex items-center space-x-2 text-xs">
-                    <span class="text-slate-400">切换模拟员工:</span>
-                    <select id="select-active-employee" onchange="changeActiveEmployee(this.value)" 
-                        class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                        <!-- 由 JS 动态渲染选项 -->
+                <div class="flex items-center space-x-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+                    <span class="text-xs text-slate-400">切换模拟员工:</span>
+                    <select id="select-staff-user" onchange="changeCurrentStaff(this.value)" class="bg-transparent text-xs text-slate-200 focus:outline-none cursor-pointer">
+                        <!-- JS 动态填充 -->
                     </select>
                 </div>
             </div>
 
+            <!-- 打卡主模块 -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- 左侧：打卡核心操作面板 -->
-                <div class="lg:col-span-2 space-y-6">
-                    
-                    <!-- 实时时间与打卡主卡片 -->
-                    <div class="glass-panel p-6 rounded-2xl relative overflow-hidden text-center border border-slate-800/80">
-                        <!-- 背景装饰光晕 -->
-                        <div class="absolute -top-24 -left-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                        <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-                        <!-- 实时数字时钟 -->
-                        <div class="mb-6">
-                            <div id="live-clock-time" class="text-4xl sm:text-5xl font-mono font-extrabold tracking-tight bg-gradient-to-r from-blue-400 via-indigo-200 to-emerald-400 bg-clip-text text-transparent">
-                                00:00:00
-                            </div>
-                            <div id="live-clock-date" class="text-xs sm:text-sm text-slate-400 font-medium mt-1">
-                                2026年10月6日 星期二
-                            </div>
-                            <div class="mt-2 inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-900/80 border border-slate-800 text-xs text-slate-400">
-                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                <span>防作弊服务器时钟（禁止本机时间伪造）</span>
-                            </div>
+                <!-- 左边: 实时打卡操作区 -->
+                <div class="lg:col-span-2 bg-slate-900/90 rounded-2xl border border-slate-800 p-6 flex flex-col items-center justify-between relative overflow-hidden">
+                    <div class="text-center space-y-1 mb-4">
+                        <div id="live-clock" class="text-5xl font-mono font-bold tracking-tight text-white drop-shadow-md">00:00:00</div>
+                        <div id="live-date" class="text-sm text-slate-400 font-medium">2026年10月06日 星期二</div>
+                        <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mt-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>
+                            防作弊服务器时钟（禁止本机时间伪造）
                         </div>
+                    </div>
 
-                        <!-- 打卡方式选择 Tag Tabs -->
-                        <div class="mb-6 max-w-md mx-auto">
-                            <label class="block text-xs font-medium text-slate-400 mb-2 text-left">选择本次打卡凭证校验方式：</label>
-                            <div class="grid grid-cols-3 gap-2 p-1 bg-slate-950/70 rounded-xl border border-slate-800 text-xs">
-                                <button onclick="setPunchMethod('gps')" id="method-btn-gps" 
-                                    class="py-2 rounded-lg font-medium transition flex flex-col items-center justify-center space-y-1 bg-blue-600/30 text-blue-300 border border-blue-500/40">
-                                    <i data-lucide="map-pin" class="w-4 h-4"></i>
-                                    <span>GPS 定位</span>
-                                </button>
-                                <button onclick="setPunchMethod('wifi')" id="method-btn-wifi" 
-                                    class="py-2 rounded-lg font-medium transition flex flex-col items-center justify-center space-y-1 text-slate-400 hover:text-slate-200">
-                                    <i data-lucide="wifi" class="w-4 h-4"></i>
-                                    <span>特定 Wi-Fi</span>
-                                </button>
-                                <button onclick="setPunchMethod('photo')" id="method-btn-photo" 
-                                    class="py-2 rounded-lg font-medium transition flex flex-col items-center justify-center space-y-1 text-slate-400 hover:text-slate-200">
-                                    <i data-lucide="camera" class="w-4 h-4"></i>
-                                    <span>现场拍照</span>
+                    <!-- 打卡模式选择 Tab -->
+                    <div class="w-full max-w-md bg-slate-950 p-1 rounded-xl border border-slate-800 flex space-x-1 mb-6">
+                        <button id="mode-btn-gps" onclick="setPunchMode('gps')" class="flex-1 py-2 rounded-lg text-xs font-medium transition-all text-white bg-blue-600 flex items-center justify-center space-x-1">
+                            <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+                            <span>GPS 定位</span>
+                        </button>
+                        <button id="mode-btn-wifi" onclick="setPunchMode('wifi')" class="flex-1 py-2 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-white flex items-center justify-center space-x-1">
+                            <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
+                            <span>特定 Wi-Fi</span>
+                        </button>
+                        <button id="mode-btn-photo" onclick="setPunchMode('photo')" class="flex-1 py-2 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-white flex items-center justify-center space-x-1">
+                            <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                            <span>现场拍照</span>
+                        </button>
+                    </div>
+
+                    <!-- 验证条件卡片与模拟器 -->
+                    <div class="w-full max-w-md bg-slate-950 rounded-xl p-4 border border-slate-800/80 mb-6 space-y-3">
+                        <!-- GPS 模式设置框 -->
+                        <div id="panel-mode-gps" class="space-y-2">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-400">当前设置定位 (经度,纬度):</span>
+                                <button onclick="fetchRealGPS()" class="text-blue-400 hover:underline flex items-center">
+                                    <i data-lucide="locate" class="w-3 h-3 mr-1"></i>重新获取真实GPS
                                 </button>
                             </div>
-                        </div>
-
-                        <!-- 动态方式控制参数模拟区 -->
-                        <div id="punch-method-controls" class="mb-6 p-4 rounded-xl glass-card text-left max-w-md mx-auto space-y-3 text-xs border border-slate-800">
-                            <!-- GPS 控件 -->
-                            <div id="ctrl-gps" class="space-y-2">
-                                <div class="flex justify-between items-center text-slate-300">
-                                    <span class="font-medium flex items-center gap-1"><i data-lucide="navigation" class="w-3.5 h-3.5 text-blue-400"></i> 当前设置定位：</span>
-                                    <button onclick="getRealLocation()" class="text-blue-400 hover:underline flex items-center gap-0.5">
-                                        <i data-lucide="locate-fixed" class="w-3 h-3"></i> 重新获取真实GPS
-                                    </button>
-                                </div>
-                                <div class="flex items-center space-x-2">
-                                    <input type="text" id="input-latlng" readonly class="flex-1 bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-300 font-mono text-xs">
-                                </div>
-                                <div id="gps-distance-indicator" class="flex items-center justify-between px-2 py-1.5 rounded bg-slate-900/90 border border-slate-800">
-                                    <span class="text-slate-400">距离考勤中心:</span>
-                                    <span id="text-distance" class="font-bold text-emerald-400">计算中...</span>
-                                </div>
-                                <div class="flex gap-2 pt-1">
-                                    <button onclick="simulateGPSLocation('inside')" class="flex-1 py-1 px-2 bg-emerald-950/60 text-emerald-300 border border-emerald-800/60 rounded hover:bg-emerald-900/50 transition">模拟：仓库范围内</button>
-                                    <button onclick="simulateGPSLocation('outside')" class="flex-1 py-1 px-2 bg-rose-950/60 text-rose-300 border border-rose-800/60 rounded hover:bg-rose-900/50 transition">模拟：范围之外</button>
-                                </div>
-                            </div>
-
-                            <!-- Wi-Fi 控件 -->
-                            <div id="ctrl-wifi" class="space-y-2 hidden">
-                                <div class="flex justify-between items-center text-slate-300">
-                                    <span class="font-medium flex items-center gap-1"><i data-lucide="wifi" class="w-3.5 h-3.5 text-indigo-400"></i> 当前连接 Wi-Fi：</span>
-                                </div>
-                                <input type="text" id="input-wifi-ssid" value="Company_Office_5G" oninput="validateCurrentStatus()" 
-                                    class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200 text-xs focus:ring-1 focus:ring-blue-500">
-                                <div class="flex gap-2 pt-1">
-                                    <button onclick="simulateWiFi('Company_Office_5G')" class="flex-1 py-1 px-2 bg-indigo-950/60 text-indigo-300 border border-indigo-800/60 rounded hover:bg-indigo-900/50 transition">连公司 Wi-Fi</button>
-                                    <button onclick="simulateWiFi('Public_4G_Hotspot')" class="flex-1 py-1 px-2 bg-amber-950/60 text-amber-300 border border-amber-800/60 rounded hover:bg-amber-900/50 transition">连外部网络</button>
-                                </div>
-                            </div>
-
-                            <!-- 现场拍照/二维码 控件 -->
-                            <div id="ctrl-photo" class="space-y-2 hidden">
-                                <div class="flex justify-between items-center text-slate-300">
-                                    <span class="font-medium flex items-center gap-1"><i data-lucide="camera" class="w-3.5 h-3.5 text-emerald-400"></i> 现场人脸活体打卡凭证：</span>
-                                </div>
-                                <div class="relative rounded-lg bg-slate-950 border border-slate-800 h-28 flex items-center justify-center overflow-hidden group">
-                                    <div id="photo-preview-placeholder" class="text-center text-slate-500 space-y-1">
-                                        <i data-lucide="image-plus" class="w-8 h-8 mx-auto opacity-50"></i>
-                                        <p>尚未拍摄现场照片</p>
-                                    </div>
-                                    <img id="photo-preview-img" class="w-full h-full object-cover hidden" alt="现场快照">
-                                    <button onclick="takeSnapshotMock()" class="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-medium gap-1">
-                                        <i data-lucide="aperture" class="w-4 h-4"></i> 重新模拟拍摄
-                                    </button>
-                                </div>
+                            <input type="text" id="input-current-gps" value="1.3521, 103.8198" onchange="recalcGpsDistance()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-blue-500">
+                            <div class="flex justify-between items-center text-xs text-slate-400 pt-1">
+                                <span>距离仓库中心:</span>
+                                <span id="text-gps-distance" class="font-bold font-mono text-emerald-400">0 米</span>
                             </div>
                         </div>
 
-                        <!-- 状态检测提醒 -->
-                        <div id="status-validation-badge" class="mb-6 p-2.5 rounded-xl border text-xs font-medium flex items-center justify-center space-x-2 transition-all">
-                            <!-- 动态加载验证状态 -->
+                        <!-- Wi-Fi 模式设置框 -->
+                        <div id="panel-mode-wifi" class="space-y-2 hidden">
+                            <div class="text-xs text-slate-400">当前连接 Wi-Fi 名称 (SSID):</div>
+                            <input type="text" id="input-current-wifi" value="Singapore_Warehouse_5G" onchange="checkWifiStatus()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+                            <div class="text-xs text-slate-400">考勤要求 Wi-Fi: <span id="req-wifi-name" class="text-blue-400 font-mono">Singapore_Warehouse_5G</span></div>
                         </div>
 
-                        <!-- 打卡按钮触发区域 -->
-                        <div class="flex justify-center items-center space-x-6">
-                            <!-- 上班打卡按钮 -->
-                            <button id="btn-clock-in" onclick="performPunch('in')" 
-                                class="group relative w-32 h-32 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 p-0.5 shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 transition-all duration-200">
-                                <div class="w-full h-full rounded-full bg-slate-950/20 backdrop-blur-sm flex flex-col items-center justify-center text-white p-2">
-                                    <i data-lucide="log-in" class="w-8 h-8 mb-1 group-hover:translate-x-0.5 transition"></i>
-                                    <span class="font-bold text-base">上班打卡</span>
-                                    <span id="time-clock-in-label" class="text-[10px] text-blue-200 mt-0.5 opacity-90">未签到</span>
+                        <!-- 拍照 模式设置框 -->
+                        <div id="panel-mode-photo" class="space-y-2 hidden text-center">
+                            <div class="relative w-full h-36 bg-slate-900 rounded-lg border border-slate-800 overflow-hidden flex items-center justify-center">
+                                <video id="camera-stream" class="w-full h-full object-cover hidden" autoplay playsinline></video>
+                                <img id="photo-preview" class="w-full h-full object-cover hidden">
+                                <div id="camera-placeholder" class="text-slate-500 text-xs flex flex-col items-center">
+                                    <i data-lucide="camera" class="w-8 h-8 mb-1 opacity-50"></i>
+                                    <span>未开启摄像头</span>
                                 </div>
-                            </button>
-
-                            <!-- 下班打卡按钮 -->
-                            <button id="btn-clock-out" onclick="performPunch('out')" 
-                                class="group relative w-32 h-32 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 p-0.5 shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-105 active:scale-95 transition-all duration-200">
-                                <div class="w-full h-full rounded-full bg-slate-950/20 backdrop-blur-sm flex flex-col items-center justify-center text-white p-2">
-                                    <i data-lucide="log-out" class="w-8 h-8 mb-1 group-hover:translate-x-0.5 transition"></i>
-                                    <span class="font-bold text-base">下班打卡</span>
-                                    <span id="time-clock-out-label" class="text-[10px] text-emerald-200 mt-0.5 opacity-90">未签退</span>
-                                </div>
+                            </div>
+                            <button id="btn-take-photo" onclick="takeSnapshot()" class="w-full py-1.5 bg-slate-800 text-slate-200 hover:bg-slate-700 rounded-lg text-xs font-medium border border-slate-700">
+                                点击拍摄打卡现场照
                             </button>
                         </div>
 
-                    </div>
-                </div>
-
-                <!-- 右侧：今日卡片 & 个人打卡记录 -->
-                <div class="space-y-6">
-                    <!-- 今日统计面板 -->
-                    <div class="glass-panel p-5 rounded-2xl space-y-4">
-                        <h3 class="text-sm font-bold text-slate-200 flex items-center justify-between border-b border-slate-800 pb-3">
-                            <span class="flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4 text-blue-400"></i> 今日工时概览</span>
-                            <span id="today-date-tag" class="text-xs text-slate-400 font-normal">--</span>
-                        </h3>
-
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="glass-card p-3 rounded-xl border border-slate-800">
-                                <p class="text-[11px] text-slate-400">上班签到</p>
-                                <p id="summary-clock-in" class="text-sm font-bold text-slate-200 mt-1">--:--</p>
-                            </div>
-                            <div class="glass-card p-3 rounded-xl border border-slate-800">
-                                <p class="text-[11px] text-slate-400">下班签退</p>
-                                <p id="summary-clock-out" class="text-sm font-bold text-slate-200 mt-1">--:--</p>
-                            </div>
-                            <div class="glass-card p-3 rounded-xl border border-slate-800 bg-blue-950/20">
-                                <p class="text-[11px] text-blue-300">实际在岗工时</p>
-                                <p id="summary-work-hours" class="text-base font-extrabold text-blue-400 mt-1">0.0 小时</p>
-                            </div>
-                            <div class="glass-card p-3 rounded-xl border border-slate-800 bg-emerald-950/20">
-                                <p class="text-[11px] text-emerald-300">预计结算加班</p>
-                                <p id="summary-overtime-hours" class="text-base font-extrabold text-emerald-400 mt-1">0.0 小时</p>
-                            </div>
-                        </div>
-
-                        <!-- 工作制信息提示 -->
-                        <div class="p-3 bg-slate-950/50 rounded-xl text-[11px] text-slate-400 space-y-1 border border-slate-800">
-                            <div class="flex justify-between"><span>标准上班时间:</span><span id="rules-in-time" class="text-slate-300 font-mono">09:00</span></div>
-                            <div class="flex justify-between"><span>标准下班时间:</span><span id="rules-out-time" class="text-slate-300 font-mono">18:00</span></div>
-                            <div class="flex justify-between"><span>自动扣除休息:</span><span id="rules-rest-time" class="text-slate-300 font-mono">1.0 小时</span></div>
+                        <!-- 校验结果提示区 -->
+                        <div id="punch-status-banner" class="p-2.5 rounded-lg text-xs font-medium flex items-center space-x-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 shrink-0"></i>
+                            <span id="punch-status-text">定位在考勤范围内，允许打卡</span>
                         </div>
                     </div>
 
-                    <!-- 个人打卡历史记录 -->
-                    <div class="glass-panel p-5 rounded-2xl space-y-3">
-                        <h3 class="text-sm font-bold text-slate-200 flex items-center justify-between">
-                            <span class="flex items-center gap-2"><i data-lucide="history" class="w-4 h-4 text-indigo-400"></i> 近期打卡历史</span>
-                            <span class="text-xs text-slate-400">最新 5 条</span>
-                        </h3>
-                        <div id="personal-history-list" class="space-y-2 max-h-60 overflow-y-auto pr-1">
-                            <!-- 动态注入历史记录 -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    <!-- 核心打卡按钮区域 -->
+                    <div class="flex items-center space-x-6">
+                        <button id="btn-punch-in" onclick="handlePunch('上班')" class="w-28 h-28 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-95 transition-all duration-200 shadow-lg shadow-blue-500/30 flex flex-col items-center justify-center space-y-1 border-2 border-blue-400/30">
+                            <i data-lucide="log-in" class="w-7 h-7 text-white"></i>
+                            <span class="text-sm font-bold text-white">上班打卡</span>
+                            <span id="time-punch-in" class="text-[10px] text-blue-200 font-mono">未打卡</span>
+                        </button>
 
-        <!-- ==================== 2. 管理员后台视图 ==================== -->
-        <div id="view-admin" class="space-y-6 hidden">
-            
-            <!-- 规则设置 & 数据概览卡片 -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                <!-- 规则与考勤中心设置 -->
-                <div class="glass-panel p-5 rounded-2xl space-y-4">
-                    <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2 border-b border-slate-800 pb-3">
-                        <i data-lucide="sliders" class="w-4 h-4 text-blue-400"></i>
-                        <span>考勤规则与标准配置</span>
-                    </h3>
-
-                    <form id="form-rules" onsubmit="saveSystemRules(event)" class="space-y-3 text-xs">
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-slate-400 mb-1">标准上班时间</label>
-                                <input type="time" id="cfg-standard-in" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 focus:ring-1 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-slate-400 mb-1">标准下班时间</label>
-                                <input type="time" id="cfg-standard-out" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 focus:ring-1 focus:ring-blue-500">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-slate-400 mb-1">午休/用餐扣除 (小时)</label>
-                                <input type="number" step="0.5" id="cfg-lunch-rest" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 focus:ring-1 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-slate-400 mb-1">允许考勤半径 (米)</label>
-                                <input type="number" id="cfg-allowed-radius" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 focus:ring-1 focus:ring-blue-500">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-slate-400 mb-1">指定的公司 Wi-Fi 名称 (SSID)</label>
-                            <input type="text" id="cfg-allowed-wifi" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 focus:ring-1 focus:ring-blue-500">
-                        </div>
-
-                        <div class="pt-2">
-                            <button type="submit" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg shadow transition flex items-center justify-center gap-1">
-                                <i data-lucide="save" class="w-3.5 h-3.5"></i> 保存规则配置
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- 考勤打卡统计分析看板 -->
-                <div class="lg:col-span-2 glass-panel p-5 rounded-2xl flex flex-col justify-between space-y-4">
-                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                        <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
-                            <i data-lucide="bar-chart-3" class="w-4 h-4 text-emerald-400"></i>
-                            <span>团队全天考勤看板</span>
-                        </h3>
-                        <span class="text-xs text-slate-400" id="admin-summary-date">2026-10-06</span>
-                    </div>
-
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div class="glass-card p-4 rounded-xl border border-slate-800 text-center">
-                            <p class="text-xs text-slate-400">应出勤人数</p>
-                            <p id="stat-total-emp" class="text-2xl font-bold text-slate-100 mt-1">3</p>
-                        </div>
-                        <div class="glass-card p-4 rounded-xl border border-slate-800 text-center bg-emerald-950/10">
-                            <p class="text-xs text-emerald-400">正常签到</p>
-                            <p id="stat-normal-count" class="text-2xl font-bold text-emerald-400 mt-1">0</p>
-                        </div>
-                        <div class="glass-card p-4 rounded-xl border border-slate-800 text-center bg-amber-950/10">
-                            <p class="text-xs text-amber-400">迟到 / 缺卡</p>
-                            <p id="stat-late-count" class="text-2xl font-bold text-amber-400 mt-1">0</p>
-                        </div>
-                        <div class="glass-card p-4 rounded-xl border border-slate-800 text-center bg-indigo-950/10">
-                            <p class="text-xs text-indigo-400">累计加班总工时</p>
-                            <p id="stat-overtime-sum" class="text-2xl font-bold text-indigo-400 mt-1">0.0h</p>
-                        </div>
-                    </div>
-
-                    <!-- 动态计算加班解说逻辑卡片 -->
-                    <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-xs text-slate-400 space-y-1">
-                        <p class="text-slate-300 font-semibold flex items-center gap-1">
-                            <i data-lucide="info" class="w-3.5 h-3.5 text-blue-400"></i> 考勤自动算薪算法说明：
-                        </p>
-                        <p>1. **出勤总工时** = 下班打卡时间 - 上班打卡时间 - 午休扣除时长。</p>
-                        <p>2. **加班工时** = 下班打卡在标准下班时间之后的部分（支持自动扣除休息时间）。</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 员工打卡明细表格与导出 -->
-            <div class="glass-panel p-5 rounded-2xl space-y-4">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <div class="flex items-center space-x-3">
-                        <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
-                            <i data-lucide="table" class="w-4 h-4 text-indigo-400"></i>
-                            <span>员工考勤打卡明细报表</span>
-                        </h3>
-                        <span class="text-xs text-slate-400">支持全员筛选与导出</span>
-                    </div>
-
-                    <div class="flex items-center space-x-2 text-xs">
-                        <select id="filter-method" onchange="renderAdminTable()" 
-                            class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-300">
-                            <option value="all">所有打卡方式</option>
-                            <option value="gps">GPS定位</option>
-                            <option value="wifi">Wi-Fi绑定</option>
-                            <option value="photo">现场拍照</option>
-                        </select>
-
-                        <button onclick="exportReportCSV()" 
-                            class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition font-medium flex items-center gap-1">
-                            <i data-lucide="download" class="w-3.5 h-3.5"></i> 导出 CSV 报表
+                        <button id="btn-punch-out" onclick="handlePunch('下班')" class="w-28 h-28 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 transition-all duration-200 shadow-lg shadow-emerald-500/30 flex flex-col items-center justify-center space-y-1 border-2 border-emerald-400/30">
+                            <i data-lucide="log-out" class="w-7 h-7 text-white"></i>
+                            <span class="text-sm font-bold text-white">下班打卡</span>
+                            <span id="time-punch-out" class="text-[10px] text-emerald-200 font-mono">未打卡</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- 考勤列表 Table -->
+                <!-- 右边: 工时统计与历史 -->
+                <div class="space-y-6">
+                    <!-- 今日工时概览 -->
+                    <div class="bg-slate-900/90 rounded-2xl border border-slate-800 p-5 space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <h3 class="font-bold text-sm text-white flex items-center">
+                                <i data-lucide="calendar" class="w-4 h-4 text-blue-400 mr-1.5"></i>今日工时概览
+                            </h3>
+                            <span id="card-date" class="text-xs text-slate-400 font-mono">2026-10-06</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                <div class="text-[11px] text-slate-400">上班签到</div>
+                                <div id="summary-clock-in" class="text-sm font-bold font-mono text-white mt-1">--:--:--</div>
+                            </div>
+                            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                <div class="text-[11px] text-slate-400">下班签退</div>
+                                <div id="summary-clock-out" class="text-sm font-bold font-mono text-white mt-1">--:--:--</div>
+                            </div>
+                            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                <div class="text-[11px] text-slate-400">实际在岗工时</div>
+                                <div id="summary-work-hours" class="text-lg font-bold font-mono text-blue-400 mt-1">0.0 小时</div>
+                            </div>
+                            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                <div class="text-[11px] text-slate-400">预计结算加班</div>
+                                <div id="summary-overtime" class="text-lg font-bold font-mono text-emerald-400 mt-1">0.0 小时</div>
+                            </div>
+                        </div>
+
+                        <div class="text-[11px] text-slate-400 bg-slate-950 p-3 rounded-xl border border-slate-800/50 space-y-1">
+                            <div class="flex justify-between"><span>标准上班时间:</span><span id="rule-disp-in" class="text-slate-200">09:00</span></div>
+                            <div class="flex justify-between"><span>标准下班时间:</span><span id="rule-disp-out" class="text-slate-200">18:00</span></div>
+                            <div class="flex justify-between"><span>午休自动扣除:</span><span id="rule-disp-rest" class="text-slate-200">1 小时</span></div>
+                        </div>
+                    </div>
+
+                    <!-- 近期打卡历史 -->
+                    <div class="bg-slate-900/90 rounded-2xl border border-slate-800 p-5 space-y-3">
+                        <h3 class="font-bold text-sm text-white flex items-center justify-between border-b border-slate-800 pb-3">
+                            <span class="flex items-center"><i data-lucide="history" class="w-4 h-4 text-blue-400 mr-1.5"></i>近期打卡历史</span>
+                            <span class="text-[10px] text-slate-500 font-normal">最新 5 条</span>
+                        </h3>
+                        <div id="staff-history-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            <!-- JS 渲染历史记录 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== 2. 管理员后台视图 ==================== -->
+        <section id="view-admin" class="space-y-6 hidden">
+            <!-- 考勤规则与配置 & 全天看板 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 规则与考勤中心地点设置 -->
+                <div class="bg-slate-900/90 rounded-2xl border border-slate-800 p-5 space-y-4">
+                    <h3 class="font-bold text-sm text-white flex items-center border-b border-slate-800 pb-3">
+                        <i data-lucide="sliders" class="w-4 h-4 text-blue-400 mr-1.5"></i>考勤规则与仓库设置
+                    </h3>
+                    <div class="space-y-3 text-xs">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-slate-400 block mb-1">标准上班时间</label>
+                                <input type="time" id="cfg-work-start" value="09:00" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono focus:border-blue-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="text-slate-400 block mb-1">标准下班时间</label>
+                                <input type="time" id="cfg-work-end" value="18:00" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono focus:border-blue-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-slate-400 block mb-1">仓库中心坐标 (经度, 纬度)</label>
+                            <div class="flex space-x-2">
+                                <input type="text" id="cfg-center-gps" value="1.3521, 103.8198" class="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono focus:border-blue-500 focus:outline-none" placeholder="经度, 纬度">
+                                <button onclick="setCenterGpsToCurrent()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg text-[11px] border border-slate-700 shrink-0">
+                                    📍 设为当前位置
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-slate-400 block mb-1">午休扣除 (小时)</label>
+                                <input type="number" id="cfg-rest-hours" value="1" step="0.5" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono focus:border-blue-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="text-slate-400 block mb-1">允许考勤半径 (米)</label>
+                                <input type="number" id="cfg-radius" value="200" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono focus:border-blue-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-slate-400 block mb-1">指定公司 Wi-Fi 名称 (SSID)</label>
+                            <input type="text" id="cfg-wifi-ssid" value="Singapore_Warehouse_5G" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono focus:border-blue-500 focus:outline-none">
+                        </div>
+
+                        <button onclick="saveAdminRules()" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg shadow-lg shadow-blue-500/20 transition">
+                            保存配置规则
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 团队全天考勤看板 -->
+                <div class="lg:col-span-2 bg-slate-900/90 rounded-2xl border border-slate-800 p-5 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <h3 class="font-bold text-sm text-white flex items-center">
+                            <i data-lucide="bar-chart-3" class="w-4 h-4 text-emerald-400 mr-1.5"></i>团队全天考勤看板
+                        </h3>
+                        <span class="text-xs text-slate-400 font-mono">2026-10-06</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
+                            <div class="text-xs text-slate-400">应出勤人数</div>
+                            <div id="stat-total-emp" class="text-2xl font-bold font-mono text-white mt-1">3</div>
+                        </div>
+                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
+                            <div class="text-xs text-slate-400">正常签到</div>
+                            <div id="stat-normal" class="text-2xl font-bold font-mono text-emerald-400 mt-1">0</div>
+                        </div>
+                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
+                            <div class="text-xs text-slate-400">迟到 / 缺卡</div>
+                            <div id="stat-late" class="text-2xl font-bold font-mono text-amber-400 mt-1">0</div>
+                        </div>
+                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
+                            <div class="text-xs text-slate-400">累计加班总工时</div>
+                            <div id="stat-overtime" class="text-2xl font-bold font-mono text-blue-400 mt-1">0.0h</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 text-xs text-slate-400 space-y-2">
+                        <div class="font-semibold text-slate-200 flex items-center">
+                            <i data-lucide="info" class="w-3.5 h-3.5 text-blue-400 mr-1"></i> 自动工时与加班结算逻辑:
+                        </div>
+                        <p>1. <strong>出勤总工时</strong> = 下班打卡时间 - 上班打卡时间 - 午休扣除时长。</p>
+                        <p>2. <strong>加班工时</strong> = 下班打卡时间超出标准下班时间的部分（以 0.1 小时为精细化结算单位）。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 员工档案管理 -->
+            <div class="bg-slate-900/90 rounded-2xl border border-slate-800 p-5 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 class="font-bold text-sm text-white flex items-center">
+                        <i data-lucide="users" class="w-4 h-4 text-purple-400 mr-1.5"></i>员工档案管理
+                    </h3>
+                    <button onclick="toggleAddStaffForm()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-medium transition flex items-center">
+                        <i data-lucide="user-plus" class="w-3.5 h-3.5 mr-1"></i>添加新员工
+                    </button>
+                </div>
+
+                <!-- 添加员工表单 (默认隐藏) -->
+                <div id="form-add-staff" class="hidden bg-slate-950 p-4 rounded-xl border border-slate-800 grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                    <div>
+                        <label class="text-slate-400 block mb-1">员工姓名</label>
+                        <input type="text" id="new-emp-name" placeholder="如: 张伟" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-slate-400 block mb-1">工号</label>
+                        <input type="text" id="new-emp-id" placeholder="如: EMP1004" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-slate-400 block mb-1">部门</label>
+                        <input type="text" id="new-emp-dept" placeholder="如: 仓储物流部" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:outline-none">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="submitNewStaff()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition">
+                            确认保存
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 员工档案列表 -->
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse text-xs">
-                        <thead>
-                            <tr class="border-b border-slate-800 text-slate-400 bg-slate-950/40">
-                                <th class="p-3 font-semibold">员工姓名</th>
-                                <th class="p-3 font-semibold">部门 / 工号</th>
-                                <th class="p-3 font-semibold">上班打卡</th>
-                                <th class="p-3 font-semibold">下班打卡</th>
-                                <th class="p-3 font-semibold">校验方式</th>
-                                <th class="p-3 font-semibold">考勤状态</th>
-                                <th class="p-3 font-semibold">当日工时</th>
-                                <th class="p-3 font-semibold">加班时长</th>
-                                <th class="p-3 font-semibold text-right">防作弊凭证</th>
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-950 text-slate-400 font-medium border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">工号</th>
+                                <th class="p-3">姓名</th>
+                                <th class="p-3">所属部门</th>
+                                <th class="p-3 text-right">操作</th>
                             </tr>
                         </thead>
-                        <tbody id="admin-attendance-tbody" class="divide-y divide-slate-800/60 text-slate-300">
-                            <!-- 动态注入数据行 -->
+                        <tbody id="table-staff-list" class="divide-y divide-slate-800/50 text-slate-300">
+                            <!-- JS 渲染 -->
                         </tbody>
                     </table>
                 </div>
             </div>
 
-        </div>
+            <!-- 员工打卡明细报表 -->
+            <div class="bg-slate-900/90 rounded-2xl border border-slate-800 p-5 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 class="font-bold text-sm text-white flex items-center">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400 mr-1.5"></i>员工考勤打卡明细报表
+                    </h3>
+                    <button onclick="exportCSV()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition flex items-center">
+                        <i data-lucide="download" class="w-3.5 h-3.5 mr-1"></i>导出 CSV 报表
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-950 text-slate-400 font-medium border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">员工姓名</th>
+                                <th class="p-3">部门 / 工号</th>
+                                <th class="p-3">上班打卡</th>
+                                <th class="p-3">下班打卡</th>
+                                <th class="p-3">校验方式</th>
+                                <th class="p-3">考勤状态</th>
+                                <th class="p-3">当日工时</th>
+                                <th class="p-3">加班时长</th>
+                                <th class="p-3">防作弊凭证 / 照片</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-admin-records" class="divide-y divide-slate-800/50 text-slate-300">
+                            <!-- JS 渲染明细 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
 
     </main>
 
-    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+    <!-- 管理员登录凭证验证弹窗 Modal -->
+    <div id="modal-admin-auth" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-blue-600/20 text-blue-400 rounded-lg">
+                    <i data-lucide="lock" class="w-5 h-5"></i>
+                </div>
+                <h3 class="font-bold text-white text-base">管理员身份验证</h3>
+            </div>
+            <p class="text-xs text-slate-400">请输入后台授权密码（默认密码：<span class="text-blue-400 font-mono">123456</span>）</p>
+            <input type="password" id="input-admin-pass" placeholder="请输入密码" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+            <div class="flex space-x-2 pt-2">
+                <button onclick="closeAdminAuthModal()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium">取消</button>
+                <button onclick="verifyAdminPass()" class="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium">验证登录</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 照片查看弹窗 -->
+    <div id="modal-photo-view" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden" onclick="this.classList.add('hidden')">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 max-w-md w-full space-y-3">
+            <h4 class="text-xs text-slate-400 font-bold">现场打卡实时快照</h4>
+            <img id="img-in-modal" class="w-full rounded-lg border border-slate-800 object-cover">
+            <p class="text-[10px] text-slate-500 text-center">点击任意位置关闭</p>
+        </div>
+    </div>
 
     <script>
-        // ==================== 1. 系统初始状态与数据结构 ====================
-        
-        // 考勤规则标准配置
-        const DEFAULT_RULES = {
-            standardIn: "09:00",
-            standardOut: "18:00",
-            lunchRestHours: 1.0,
-            centerLat: 31.2304,    // 考勤中心纬度 (默认示例: 上海)
-            centerLng: 121.4737,   // 考勤中心经度
-            allowedRadiusMeters: 200, // 允许打卡半径 (米)
-            allowedWifiSSID: "Company_Office_5G"
+        // 初始化全局数据与状态
+        let currentView = 'staff';
+        let currentPunchMode = 'gps'; // gps, wifi, photo
+        let capturedPhotoData = null;
+
+        // 默认数据配置
+        let config = {
+            workStart: '09:00',
+            workEnd: '18:00',
+            centerGps: [1.3521, 103.8198], // 默认新加坡坐标
+            radiusMeter: 200,
+            wifiSSID: 'Singapore_Warehouse_5G',
+            restHours: 1
         };
 
-        // 预置示例员工账号
-        const INITIAL_EMPLOYEES = [
-            { id: "EMP1001", name: "张伟", dept: "仓储物流部" },
-            { id: "EMP1002", name: "李娜", dept: "技术研发部" },
-            { id: "EMP1003", name: "王强", dept: "行政人事部" }
+        let staffList = [
+            { id: 'EMP1001', name: '张伟', dept: '仓储物流部' },
+            { id: 'EMP1002', name: '李娜', dept: '技术研发部' },
+            { id: 'EMP1003', name: '王强', dept: '行政人事部' }
         ];
 
-        // 默认模拟初始打卡历史记录
-        const INITIAL_PUNCH_RECORDS = [
-            {
-                id: "REC-001",
-                empId: "EMP1002",
-                empName: "李娜",
-                dept: "技术研发部",
-                date: "2026-10-06",
-                clockIn: "08:52:10",
-                clockOut: "19:30:15",
-                method: "gps",
-                statusIn: "正常",
-                statusOut: "正常",
-                workHours: 9.6,
-                overtimeHours: 1.5,
-                proof: "GPS (距中心 45 米)"
-            },
-            {
-                id: "REC-002",
-                empId: "EMP1003",
-                empName: "王强",
-                dept: "行政人事部",
-                date: "2026-10-06",
-                clockIn: "09:12:05",
-                clockOut: "18:05:00",
-                method: "wifi",
-                statusIn: "迟到",
-                statusOut: "正常",
-                workHours: 7.9,
-                overtimeHours: 0.0,
-                proof: "Wi-Fi (Company_Office_5G)"
-            }
+        let currentStaff = staffList[1]; // 默认李娜
+
+        // 初始测试打卡记录
+        let attendanceRecords = [
+            { id: 1, empId: 'EMP1001', name: '张伟', dept: '仓储物流部', clockIn: '18:15:46', clockOut: '--:--:--', mode: 'GPS定位', status: '迟到', workHours: 0, overtime: 0, proof: 'GPS (距离 22 米)', photo: null },
+            { id: 2, empId: 'EMP1002', name: '李娜', dept: '技术研发部', clockIn: '08:52:10', clockOut: '19:30:15', mode: 'GPS定位', status: '正常', workHours: 9.6, overtime: 1.5, proof: 'GPS (距离 0 米)', photo: null }
         ];
 
-        // 应用全局 State
-        let currentRole = 'employee'; // 'employee' | 'admin'
-        let activeEmpId = 'EMP1001';
-        let currentMethod = 'gps'; // 'gps' | 'wifi' | 'photo'
-        let rules = {};
-        let records = [];
-
-        // 模拟当前设备状态
-        let currentMockLocation = { lat: 31.2305, lng: 121.4739 }; // 默认在范围捏
-        let currentMockWifi = "Company_Office_5G";
-        let currentMockPhoto = null;
-
-        // ==================== 2. 初始化与 LocalStorage 处理 ====================
-
-        window.onload = function() {
-            loadInitialData();
-            initClock();
-            switchRole('employee');
-            renderEmployeeSelect();
-            setPunchMethod('gps');
-            validateCurrentStatus();
+        // 页面初始化
+        window.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-        };
+            startClock();
+            renderStaffDropdown();
+            renderStaffTable();
+            renderRecordsTable();
+            recalcGpsDistance();
+        });
 
-        function loadInitialData() {
-            // 加载或初始化规则
-            const savedRules = localStorage.getItem('workpunch_rules');
-            rules = savedRules ? JSON.parse(savedRules) : { ...DEFAULT_RULES };
-
-            // 加载或初始化记录
-            const savedRecords = localStorage.getItem('workpunch_records');
-            records = savedRecords ? JSON.parse(savedRecords) : [...INITIAL_PUNCH_RECORDS];
-
-            // 填写管理员设置表单初始值
-            document.getElementById('cfg-standard-in').value = rules.standardIn;
-            document.getElementById('cfg-standard-out').value = rules.standardOut;
-            document.getElementById('cfg-lunch-rest').value = rules.lunchRestHours;
-            document.getElementById('cfg-allowed-radius').value = rules.allowedRadiusMeters;
-            document.getElementById('cfg-allowed-wifi').value = rules.allowedWifiSSID;
-        }
-
-        function saveData() {
-            localStorage.setItem('workpunch_rules', JSON.stringify(rules));
-            localStorage.setItem('workpunch_records', JSON.stringify(records));
-        }
-
-        function resetSystemData() {
-            if (confirm("确定要恢复默认初始示例数据吗？本地存储的数据将被重置。")) {
-                localStorage.removeItem('workpunch_rules');
-                localStorage.removeItem('workpunch_records');
-                loadInitialData();
-                renderAllViews();
-                showToast("系统数据已成功重置！", "success");
-            }
-        }
-
-        // ==================== 3. 实时时钟与算法函数 ====================
-
-        function initClock() {
-            function update() {
+        // 时钟主循环
+        function startClock() {
+            setInterval(() => {
                 const now = new Date();
-                const hours = String(now.getHours()).padStart(2, '0');
-                const minutes = String(now.getMinutes()).padStart(2, '0');
-                const seconds = String(now.getSeconds()).padStart(2, '0');
-                
-                const timeStr = `${hours}:${minutes}:${seconds}`;
-                document.getElementById('live-clock-time').textContent = timeStr;
-
-                const year = now.getFullYear();
-                const month = now.getMonth() + 1;
-                const day = now.getDate();
-                const weekDays = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
-                document.getElementById('live-clock-date').textContent = `${year}年${month}月${day}日 ${weekDays[now.getDay()]}`;
-            }
-            update();
-            setInterval(update, 1000);
+                document.getElementById('live-clock').innerText = now.toTimeString().split(' ')[0];
+            }, 1000);
         }
 
-        // 经纬度距离计算（Haversine 公式，单位：米）
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371000; // 地球半径(米)
+        // 视图切换逻辑与权限验证
+        function switchView(view) {
+            currentView = view;
+            if (view === 'staff') {
+                document.getElementById('view-staff').classList.remove('hidden');
+                document.getElementById('view-admin').classList.add('hidden');
+                document.getElementById('btn-staff-view').className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 bg-blue-600 text-white shadow-lg shadow-blue-500/20';
+                document.getElementById('btn-admin-view').className = 'px-4 py-1.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all duration-200';
+            } else {
+                document.getElementById('view-staff').classList.add('hidden');
+                document.getElementById('view-admin').classList.remove('hidden');
+                document.getElementById('btn-admin-view').className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 bg-blue-600 text-white shadow-lg shadow-blue-500/20';
+                document.getElementById('btn-staff-view').className = 'px-4 py-1.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all duration-200';
+            }
+        }
+
+        function openAdminAuthModal() {
+            document.getElementById('modal-admin-auth').classList.remove('hidden');
+        }
+
+        function closeAdminAuthModal() {
+            document.getElementById('modal-admin-auth').classList.add('hidden');
+        }
+
+        function verifyAdminPass() {
+            const pass = document.getElementById('input-admin-pass').value;
+            if (pass === '123456') {
+                closeAdminAuthModal();
+                switchView('admin');
+            } else {
+                alert('密码错误！默认授权密码为 123456');
+            }
+        }
+
+        // 切换模式逻辑
+        function setPunchMode(mode) {
+            currentPunchMode = mode;
+            const btnGps = document.getElementById('mode-btn-gps');
+            const btnWifi = document.getElementById('mode-btn-wifi');
+            const btnPhoto = document.getElementById('mode-btn-photo');
+
+            const panelGps = document.getElementById('panel-mode-gps');
+            const panelWifi = document.getElementById('panel-mode-wifi');
+            const panelPhoto = document.getElementById('panel-mode-photo');
+
+            [btnGps, btnWifi, btnPhoto].forEach(btn => btn.className = 'flex-1 py-2 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-white flex items-center justify-center space-x-1');
+            [panelGps, panelWifi, panelPhoto].forEach(panel => panel.classList.add('hidden'));
+
+            if (mode === 'gps') {
+                btnGps.className = 'flex-1 py-2 rounded-lg text-xs font-medium transition-all text-white bg-blue-600 flex items-center justify-center space-x-1';
+                panelGps.classList.remove('hidden');
+                recalcGpsDistance();
+            } else if (mode === 'wifi') {
+                btnWifi.className = 'flex-1 py-2 rounded-lg text-xs font-medium transition-all text-white bg-blue-600 flex items-center justify-center space-x-1';
+                panelWifi.classList.remove('hidden');
+                checkWifiStatus();
+            } else if (mode === 'photo') {
+                btnPhoto.className = 'flex-1 py-2 rounded-lg text-xs font-medium transition-all text-white bg-blue-600 flex items-center justify-center space-x-1';
+                panelPhoto.classList.remove('hidden');
+                initCamera();
+            }
+        }
+
+        // 计算 GPS 距离 (Haversine 算法)
+        function recalcGpsDistance() {
+            const val = document.getElementById('input-current-gps').value.split(',');
+            if (val.length < 2) return;
+            const lat1 = parseFloat(val[0].trim());
+            const lon1 = parseFloat(val[1].trim());
+
+            const [lat2, lon2] = config.centerGps;
+            const dist = getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2);
+
+            const distEl = document.getElementById('text-gps-distance');
+            distEl.innerText = `${Math.round(dist)} 米`;
+
+            const banner = document.getElementById('punch-status-banner');
+            const bannerText = document.getElementById('punch-status-text');
+
+            if (dist <= config.radiusMeter) {
+                distEl.className = 'font-bold font-mono text-emerald-400';
+                banner.className = 'p-2.5 rounded-lg text-xs font-medium flex items-center space-x-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                bannerText.innerText = `定位在考勤范围内 (距离中心 ${Math.round(dist)}m <= ${config.radiusMeter}m)`;
+            } else {
+                distEl.className = 'font-bold font-mono text-rose-400';
+                banner.className = 'p-2.5 rounded-lg text-xs font-medium flex items-center space-x-2 bg-rose-500/10 text-rose-400 border border-rose-500/20';
+                bannerText.innerText = `GPS超出范围！距离仓库 ${Math.round(dist)}m (> 允许半径 ${config.radiusMeter}m)`;
+            }
+        }
+
+        function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
                       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
                       Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return Math.round(R * c);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
 
-        // ==================== 4. 视图与界面切换 ====================
-
-        function switchRole(role) {
-            currentRole = role;
-            const empBtn = document.getElementById('btn-role-employee');
-            const adminBtn = document.getElementById('btn-role-admin');
-            const viewEmp = document.getElementById('view-employee');
-            const viewAdmin = document.getElementById('view-admin');
-
-            if (role === 'employee') {
-                empBtn.className = "px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 bg-blue-600 text-white shadow-md";
-                adminBtn.className = "px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 text-slate-400 hover:text-white";
-                viewEmp.classList.remove('hidden');
-                viewAdmin.classList.add('hidden');
-            } else {
-                adminBtn.className = "px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 bg-blue-600 text-white shadow-md";
-                empBtn.className = "px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 text-slate-400 hover:text-white";
-                viewAdmin.classList.remove('hidden');
-                viewEmp.classList.add('hidden');
-                renderAdminDashboard();
-            }
-            renderAllViews();
-        }
-
-        function renderEmployeeSelect() {
-            const select = document.getElementById('select-active-employee');
-            select.innerHTML = INITIAL_EMPLOYEES.map(emp => 
-                `<option value="${emp.id}">${emp.name} (${emp.dept})</option>`
-            ).join('');
-            select.value = activeEmpId;
-        }
-
-        function changeActiveEmployee(empId) {
-            activeEmpId = empId;
-            const emp = INITIAL_EMPLOYEES.find(e => e.id === empId);
-            if (emp) {
-                document.getElementById('emp-name').textContent = emp.name;
-                document.getElementById('emp-id').textContent = emp.id;
-                document.getElementById('emp-dept').textContent = emp.dept;
-                document.getElementById('emp-avatar').textContent = emp.name.charAt(0);
-            }
-            renderEmployeeView();
-        }
-
-        function setPunchMethod(method) {
-            currentMethod = method;
-            const methods = ['gps', 'wifi', 'photo'];
-            
-            methods.forEach(m => {
-                const btn = document.getElementById(`method-btn-${m}`);
-                const ctrl = document.getElementById(`ctrl-${m}`);
-                if (m === method) {
-                    btn.className = "py-2 rounded-lg font-medium transition flex flex-col items-center justify-center space-y-1 bg-blue-600/30 text-blue-300 border border-blue-500/40";
-                    ctrl.classList.remove('hidden');
-                } else {
-                    btn.className = "py-2 rounded-lg font-medium transition flex flex-col items-center justify-center space-y-1 text-slate-400 hover:text-slate-200";
-                    ctrl.classList.add('hidden');
-                }
-            });
-
-            validateCurrentStatus();
-        }
-
-        // ==================== 5. 打卡凭证验证与模拟 ====================
-
-        function validateCurrentStatus() {
-            const badge = document.getElementById('status-validation-badge');
-            let isValid = false;
-            let message = "";
-
-            if (currentMethod === 'gps') {
-                const dist = calculateDistance(currentMockLocation.lat, currentMockLocation.lng, rules.centerLat, rules.centerLng);
-                document.getElementById('input-latlng').value = `${currentMockLocation.lat.toFixed(4)}, ${currentMockLocation.lng.toFixed(4)}`;
-                document.getElementById('text-distance').textContent = `${dist} 米`;
-                
-                if (dist <= rules.allowedRadiusMeters) {
-                    isValid = true;
-                    message = `GPS 验证通过：处于考勤围栏内 (距离 ${dist}m ≤ 有效半径 ${rules.allowedRadiusMeters}m)`;
-                    document.getElementById('text-distance').className = "font-bold text-emerald-400";
-                } else {
-                    isValid = false;
-                    message = `GPS 验证失败：已超出考勤范围 (距离 ${dist}m > 有效半径 ${rules.allowedRadiusMeters}m)`;
-                    document.getElementById('text-distance').className = "font-bold text-rose-400";
-                }
-            } else if (currentMethod === 'wifi') {
-                const ssidInput = document.getElementById('input-wifi-ssid').value.trim();
-                if (ssidInput === rules.allowedWifiSSID) {
-                    isValid = true;
-                    message = `Wi-Fi 验证通过：已成功连接指定的办公网络 (${ssidInput})`;
-                } else {
-                    isValid = false;
-                    message = `Wi-Fi 验证失败：未知网络 (${ssidInput})，非指定公司 Wi-Fi`;
-                }
-            } else if (currentMethod === 'photo') {
-                if (currentMockPhoto) {
-                    isValid = true;
-                    message = `现场人脸快照验证通过：活体体征检测无异常`;
-                } else {
-                    isValid = false;
-                    message = `未拍摄现场凭证照片，请点击下方拍摄人脸快照`;
-                }
-            }
-
-            if (isValid) {
-                badge.className = "mb-6 p-2.5 rounded-xl border text-xs font-medium flex items-center justify-center space-x-2 bg-emerald-950/40 text-emerald-300 border-emerald-800/60";
-                badge.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i> <span>${message}</span>`;
-            } else {
-                badge.className = "mb-6 p-2.5 rounded-xl border text-xs font-medium flex items-center justify-center space-x-2 bg-rose-950/40 text-rose-300 border-rose-800/60";
-                badge.innerHTML = `<i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i> <span>${message}</span>`;
-            }
-            lucide.createIcons();
-            return isValid;
-        }
-
-        function simulateGPSLocation(type) {
-            if (type === 'inside') {
-                currentMockLocation = { lat: 31.2305, lng: 121.4738 };
-            } else {
-                currentMockLocation = { lat: 31.2400, lng: 121.4900 }; // 偏离 1.5 公里
-            }
-            validateCurrentStatus();
-        }
-
-        function getRealLocation() {
+        function fetchRealGPS() {
             if (navigator.geolocation) {
-                showToast("正在获取手机系统真实 GPS...", "info");
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        currentMockLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                        validateCurrentStatus();
-                        showToast("成功获取真实 GPS 坐标", "success");
-                    },
-                    (err) => {
-                        showToast("获取真实 GPS 失败，将保留模拟坐标: " + err.message, "warning");
-                    }
-                );
+                navigator.geolocation.getCurrentPosition(pos => {
+                    document.getElementById('input-current-gps').value = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+                    recalcGpsDistance();
+                }, () => alert('无法获取位置，请检查手机 GPS 权限设置。'));
             } else {
-                showToast("当前浏览器不支持地理定位 API", "warning");
+                alert('您的浏览器不支持 GPS 获取。');
             }
         }
 
-        function simulateWiFi(ssid) {
-            document.getElementById('input-wifi-ssid').value = ssid;
-            validateCurrentStatus();
+        // Wi-Fi 模式校验
+        function checkWifiStatus() {
+            const curWifi = document.getElementById('input-current-wifi').value;
+            const banner = document.getElementById('punch-status-banner');
+            const bannerText = document.getElementById('punch-status-text');
+
+            if (curWifi === config.wifiSSID) {
+                banner.className = 'p-2.5 rounded-lg text-xs font-medium flex items-center space-x-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                bannerText.innerText = `已连接指定公司 Wi-Fi: ${curWifi}`;
+            } else {
+                banner.className = 'p-2.5 rounded-lg text-xs font-medium flex items-center space-x-2 bg-rose-500/10 text-rose-400 border border-rose-500/20';
+                bannerText.innerText = `非公司 Wi-Fi！无法打卡 (期望: ${config.wifiSSID})`;
+            }
         }
 
-        function takeSnapshotMock() {
-            // 使用占位高品质人脸 SVG / Canvas 生成模拟照片
+        // 摄像头调用与拍照
+        async function initCamera() {
+            const video = document.getElementById('camera-stream');
+            const placeholder = document.getElementById('camera-placeholder');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                video.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } catch (err) {
+                console.warn('无法调起摄像头: ', err);
+            }
+        }
+
+        function takeSnapshot() {
+            const video = document.getElementById('camera-stream');
+            const photoImg = document.getElementById('photo-preview');
             const canvas = document.createElement('canvas');
-            canvas.width = 200;
-            canvas.height = 150;
+            canvas.width = 320;
+            canvas.height = 240;
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(0, 0, 200, 150);
-            ctx.fillStyle = '#3b82f6';
-            ctx.beginPath();
-            ctx.arc(100, 60, 30, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(100, 140, 50, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // 绘制水印
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '10px monospace';
-            ctx.fillText(new Date().toLocaleTimeString(), 10, 140);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            capturedPhotoData = canvas.toDataURL('image/png');
 
-            currentMockPhoto = canvas.toDataURL();
-            document.getElementById('photo-preview-placeholder').classList.add('hidden');
-            const img = document.getElementById('photo-preview-img');
-            img.src = currentMockPhoto;
-            img.classList.remove('hidden');
+            photoImg.src = capturedPhotoData;
+            photoImg.classList.remove('hidden');
+            video.classList.add('hidden');
 
-            validateCurrentStatus();
-            showToast("人脸快照拍摄成功", "success");
+            const banner = document.getElementById('punch-status-banner');
+            const bannerText = document.getElementById('punch-status-text');
+            banner.className = 'p-2.5 rounded-lg text-xs font-medium flex items-center space-x-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+            bannerText.innerText = '现场照片已捕捉成功，可以点击打卡';
         }
 
-        // ==================== 6. 执行打卡动作逻辑 ====================
+        // 打卡提交动作
+        function handlePunch(type) {
+            const nowTimeStr = new Date().toTimeString().split(' ')[0];
 
-        function getTodayDateStr() {
-            const now = new Date();
-            const y = now.getFullYear();
-            const m = String(now.getMonth() + 1).padStart(2, '0');
-            const d = String(now.getDate()).padStart(2, '0');
-            return `${y}-${m}-${d}`;
+            let rec = attendanceRecords.find(r => r.empId === currentStaff.id);
+            if (!rec) {
+                rec = { id: Date.now(), empId: currentStaff.id, name: currentStaff.name, dept: currentStaff.dept, clockIn: '--:--:--', clockOut: '--:--:--', mode: '', status: '未签到', workHours: 0, overtime: 0, proof: '', photo: null };
+                attendanceRecords.push(rec);
+            }
+
+            if (type === '上班') {
+                rec.clockIn = nowTimeStr;
+                rec.status = nowTimeStr > config.workStart + ':00' ? '迟到' : '正常';
+                document.getElementById('time-punch-in').innerText = nowTimeStr;
+                document.getElementById('summary-clock-in').innerText = nowTimeStr;
+            } else {
+                rec.clockOut = nowTimeStr;
+                document.getElementById('time-punch-out').innerText = nowTimeStr;
+                document.getElementById('summary-clock-out').innerText = nowTimeStr;
+            }
+
+            // 模式信息记录
+            rec.mode = currentPunchMode === 'gps' ? 'GPS定位' : (currentPunchMode === 'wifi' ? 'Wi-Fi绑定' : '现场拍照');
+            rec.proof = currentPunchMode === 'gps' ? `GPS (${document.getElementById('text-gps-distance').innerText})` : (currentPunchMode === 'wifi' ? `Wi-Fi (${config.wifiSSID})` : '现场快照');
+            rec.photo = capturedPhotoData;
+
+            // 计算工时与加班
+            if (rec.clockIn !== '--:--:--' && rec.clockOut !== '--:--:--') {
+                const inSec = timeToSeconds(rec.clockIn);
+                const outSec = timeToSeconds(rec.clockOut);
+                const totalHours = Math.max(0, (outSec - inSec) / 3600 - config.restHours);
+                rec.workHours = parseFloat(totalHours.toFixed(1));
+
+                const standardOutSec = timeToSeconds(config.workEnd + ':00');
+                const overtimeHours = Math.max(0, (outSec - standardOutSec) / 3600);
+                rec.overtime = parseFloat(overtimeHours.toFixed(1));
+
+                document.getElementById('summary-work-hours').innerText = `${rec.workHours} 小时`;
+                document.getElementById('summary-overtime').innerText = `${rec.overtime} 小时`;
+            }
+
+            renderRecordsTable();
+            renderStaffHistory();
+            alert(`${type}打卡成功！打卡时间: ${nowTimeStr}`);
         }
 
-        function performPunch(type) { // type: 'in' | 'out'
-            if (!validateCurrentStatus()) {
-                showToast("打卡失败：考勤凭证验证未通过，请检查位置/Wi-Fi/照片", "error");
+        function timeToSeconds(timeStr) {
+            const [h, m, s] = timeStr.split(':').map(Number);
+            return h * 3600 + m * 60 + (s || 0);
+        }
+
+        // 渲染员工下拉框
+        function renderStaffDropdown() {
+            const select = document.getElementById('select-staff-user');
+            select.innerHTML = staffList.map(s => `<option value="${s.id}" ${s.id === currentStaff.id ? 'selected' : ''}>${s.name} (${s.dept})</option>`).join('');
+        }
+
+        function changeCurrentStaff(empId) {
+            currentStaff = staffList.find(s => s.id === empId);
+            document.getElementById('user-name').innerText = currentStaff.name;
+            document.getElementById('user-dept').innerText = currentStaff.dept;
+            document.getElementById('user-emp-id').innerText = `工号: ${currentStaff.id}`;
+            document.getElementById('user-avatar').innerText = currentStaff.name[0];
+
+            // 重置界面上的打卡状态
+            document.getElementById('time-punch-in').innerText = '未打卡';
+            document.getElementById('time-punch-out').innerText = '未打卡';
+            document.getElementById('summary-clock-in').innerText = '--:--:--';
+            document.getElementById('summary-clock-out').innerText = '--:--:--';
+            document.getElementById('summary-work-hours').innerText = '0.0 小时';
+            document.getElementById('summary-overtime').innerText = '0.0 小时';
+
+            renderStaffHistory();
+        }
+
+        // 渲染个人打卡历史
+        function renderStaffHistory() {
+            const list = document.getElementById('staff-history-list');
+            const userRecs = attendanceRecords.filter(r => r.empId === currentStaff.id);
+            if (userRecs.length === 0) {
+                list.innerHTML = `<div class="text-xs text-slate-500 text-center py-4">暂无打卡记录</div>`;
                 return;
             }
-
-            const now = new Date();
-            const todayStr = getTodayDateStr();
-            const timeStr = now.toTimeString().split(' ')[0]; // HH:mm:ss
-            const emp = INITIAL_EMPLOYEES.find(e => e.id === activeEmpId);
-
-            // 检查今日是否已有记录
-            let record = records.find(r => r.empId === activeEmpId && r.date === todayStr);
-
-            let proofText = "";
-            if (currentMethod === 'gps') {
-                const dist = calculateDistance(currentMockLocation.lat, currentMockLocation.lng, rules.centerLat, rules.centerLng);
-                proofText = `GPS (距离 ${dist} 米)`;
-            } else if (currentMethod === 'wifi') {
-                proofText = `Wi-Fi (${document.getElementById('input-wifi-ssid').value})`;
-            } else {
-                proofText = `照片快照验证`;
-            }
-
-            if (type === 'in') {
-                // 上班打卡
-                const statusIn = timeStr > (rules.standardIn + ":00") ? "迟到" : "正常";
-                if (!record) {
-                    record = {
-                        id: 'REC-' + Date.now().toString().slice(-6),
-                        empId: emp.id,
-                        empName: emp.name,
-                        dept: emp.dept,
-                        date: todayStr,
-                        clockIn: timeStr,
-                        clockOut: "--:--:--",
-                        method: currentMethod,
-                        statusIn: statusIn,
-                        statusOut: "缺卡",
-                        workHours: 0,
-                        overtimeHours: 0,
-                        proof: proofText
-                    };
-                    records.unshift(record);
-                } else {
-                    record.clockIn = timeStr;
-                    record.statusIn = statusIn;
-                    record.proof = proofText;
-                }
-                showToast(`上班打卡成功！时间: ${timeStr} (${statusIn})`, "success");
-            } else {
-                // 下班打卡
-                if (!record) {
-                    // 没有上班卡，补下班卡
-                    record = {
-                        id: 'REC-' + Date.now().toString().slice(-6),
-                        empId: emp.id,
-                        empName: emp.name,
-                        dept: emp.dept,
-                        date: todayStr,
-                        clockIn: "--:--:--",
-                        clockOut: timeStr,
-                        method: currentMethod,
-                        statusIn: "缺卡",
-                        statusOut: "正常",
-                        workHours: 0,
-                        overtimeHours: 0,
-                        proof: proofText
-                    };
-                    records.unshift(record);
-                } else {
-                    record.clockOut = timeStr;
-                    record.statusOut = "正常";
-                }
-
-                // 结算工时与加班
-                calculateRecordHours(record);
-                showToast(`下班打卡成功！时间: ${timeStr}，今日工时已结算`, "success");
-            }
-
-            saveData();
-            renderAllViews();
-        }
-
-        // 计算出勤时长与加班时长
-        function calculateRecordHours(record) {
-            if (record.clockIn !== "--:--:--" && record.clockOut !== "--:--:--") {
-                const inDate = new Date(`${record.date}T${record.clockIn}`);
-                const outDate = new Date(`${record.date}T${record.clockOut}`);
-                
-                let diffMs = outDate - inDate;
-                if (diffMs < 0) diffMs = 0;
-
-                let grossHours = diffMs / (1000 * 60 * 60);
-                // 扣除午休
-                let netHours = Math.max(0, grossHours - rules.lunchRestHours);
-                record.workHours = parseFloat(netHours.toFixed(1));
-
-                // 算加班：如果下班超过标准下班时间
-                const stdOutDate = new Date(`${record.date}T${rules.standardOut}:00`);
-                if (outDate > stdOutDate) {
-                    let otMs = outDate - stdOutDate;
-                    let otHours = otMs / (1000 * 60 * 60);
-                    record.overtimeHours = parseFloat(otHours.toFixed(1));
-                } else {
-                    record.overtimeHours = 0;
-                }
-            }
-        }
-
-        // ==================== 7. 渲染视图 UI ====================
-
-        function renderAllViews() {
-            renderEmployeeView();
-            if (currentRole === 'admin') {
-                renderAdminDashboard();
-            }
-        }
-
-        function renderEmployeeView() {
-            document.getElementById('today-date-tag').textContent = getTodayDateStr();
-            document.getElementById('rules-in-time').textContent = rules.standardIn;
-            document.getElementById('rules-out-time').textContent = rules.standardOut;
-            document.getElementById('rules-rest-time').textContent = `${rules.lunchRestHours} 小时`;
-
-            const todayStr = getTodayDateStr();
-            const record = records.find(r => r.empId === activeEmpId && r.date === todayStr);
-
-            if (record) {
-                document.getElementById('time-clock-in-label').textContent = record.clockIn !== "--:--:--" ? record.clockIn : "未签到";
-                document.getElementById('time-clock-out-label').textContent = record.clockOut !== "--:--:--" ? record.clockOut : "未签退";
-                
-                document.getElementById('summary-clock-in').textContent = record.clockIn;
-                document.getElementById('summary-clock-out').textContent = record.clockOut;
-                document.getElementById('summary-work-hours').textContent = `${record.workHours} 小时`;
-                document.getElementById('summary-overtime-hours').textContent = `${record.overtimeHours} 小时`;
-            } else {
-                document.getElementById('time-clock-in-label').textContent = "未签到";
-                document.getElementById('time-clock-out-label').textContent = "未签退";
-                document.getElementById('summary-clock-in').textContent = "--:--";
-                document.getElementById('summary-clock-out').textContent = "--:--";
-                document.getElementById('summary-work-hours').textContent = "0.0 小时";
-                document.getElementById('summary-overtime-hours').textContent = "0.0 小时";
-            }
-
-            // 渲染个人历史记录
-            const empRecords = records.filter(r => r.empId === activeEmpId).slice(0, 5);
-            const historyList = document.getElementById('personal-history-list');
-            
-            if (empRecords.length === 0) {
-                historyList.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">暂无历史打卡记录</p>`;
-            } else {
-                historyList.innerHTML = empRecords.map(r => `
-                    <div class="glass-card p-2.5 rounded-xl border border-slate-800 text-xs flex justify-between items-center">
-                        <div>
-                            <div class="font-medium text-slate-200">${r.date}</div>
-                            <div class="text-[10px] text-slate-400 mt-0.5">${r.proof}</div>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-slate-300 font-mono">${r.clockIn} ~ ${r.clockOut}</div>
-                            <div class="text-[10px] space-x-1 mt-0.5">
-                                <span class="text-blue-400">工时:${r.workHours}h</span>
-                                ${r.overtimeHours > 0 ? `<span class="text-emerald-400 font-bold">加班:${r.overtimeHours}h</span>` : ''}
-                            </div>
-                        </div>
+            list.innerHTML = userRecs.map(r => `
+                <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-xs flex justify-between items-center">
+                    <div>
+                        <div class="text-slate-200 font-mono font-medium">${r.clockIn} ~ ${r.clockOut}</div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">${r.mode} | ${r.proof}</div>
                     </div>
-                `).join('');
+                    <div class="text-right">
+                        <span class="px-1.5 py-0.5 rounded text-[10px] ${r.status === '正常' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}">${r.status}</span>
+                        <div class="text-[10px] text-blue-400 mt-0.5 font-mono">工时:${r.workHours}h 加班:${r.overtime}h</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 管理员功能: 规则与员工管理
+        function saveAdminRules() {
+            config.workStart = document.getElementById('cfg-work-start').value;
+            config.workEnd = document.getElementById('cfg-work-end').value;
+            const centerGpsInput = document.getElementById('cfg-center-gps').value.split(',');
+            config.centerGps = [parseFloat(centerGpsInput[0]), parseFloat(centerGpsInput[1])];
+            config.radiusMeter = parseInt(document.getElementById('cfg-radius').value);
+            config.wifiSSID = document.getElementById('cfg-wifi-ssid').value;
+            config.restHours = parseFloat(document.getElementById('cfg-rest-hours').value);
+
+            document.getElementById('rule-disp-in').innerText = config.workStart;
+            document.getElementById('rule-disp-out').innerText = config.workEnd;
+            document.getElementById('rule-disp-rest').innerText = `${config.restHours} 小时`;
+            document.getElementById('req-wifi-name').innerText = config.wifiSSID;
+
+            alert('考勤配置规则保存成功！');
+        }
+
+        function setCenterGpsToCurrent() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    document.getElementById('cfg-center-gps').value = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+                });
+            } else {
+                alert('无法获取实时定位');
             }
         }
 
-        function renderAdminDashboard() {
-            document.getElementById('admin-summary-date').textContent = getTodayDateStr();
-
-            // 统计看板数据
-            const todayRecords = records.filter(r => r.date === getTodayDateStr());
-            const normalCount = todayRecords.filter(r => r.statusIn === '正常').length;
-            const lateCount = todayRecords.filter(r => r.statusIn === '迟到' || r.statusIn === '缺卡').length;
-            const totalOt = todayRecords.reduce((sum, r) => sum + (r.overtimeHours || 0), 0);
-
-            document.getElementById('stat-total-emp').textContent = INITIAL_EMPLOYEES.length;
-            document.getElementById('stat-normal-count').textContent = normalCount;
-            document.getElementById('stat-late-count').textContent = lateCount;
-            document.getElementById('stat-overtime-sum').textContent = `${totalOt.toFixed(1)}h`;
-
-            renderAdminTable();
+        function toggleAddStaffForm() {
+            document.getElementById('form-add-staff').classList.toggle('hidden');
         }
 
-        function renderAdminTable() {
-            const methodFilter = document.getElementById('filter-method').value;
-            const tbody = document.getElementById('admin-attendance-tbody');
+        function submitNewStaff() {
+            const name = document.getElementById('new-emp-name').value;
+            const id = document.getElementById('new-emp-id').value;
+            const dept = document.getElementById('new-emp-dept').value;
 
-            let filtered = records;
-            if (methodFilter !== 'all') {
-                filtered = filtered.filter(r => r.method === methodFilter);
-            }
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-500">没有查找到相关的打卡记录</td></tr>`;
+            if (!name || !id || !dept) {
+                alert('请填写完整员工信息');
                 return;
             }
 
-            tbody.innerHTML = filtered.map(r => {
-                let methodBadge = '';
-                if (r.method === 'gps') methodBadge = `<span class="px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-800">GPS定位</span>`;
-                else if (r.method === 'wifi') methodBadge = `<span class="px-2 py-0.5 rounded bg-indigo-950 text-indigo-400 border border-indigo-800">Wi-Fi绑定</span>`;
-                else methodBadge = `<span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">现场照片</span>`;
+            staffList.push({ id, name, dept });
+            renderStaffDropdown();
+            renderStaffTable();
+            document.getElementById('form-add-staff').classList.add('hidden');
+            alert(`成功添加员工: ${name}`);
+        }
 
-                let statusBadge = r.statusIn === '正常' 
-                    ? `<span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">正常</span>`
-                    : `<span class="px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800">${r.statusIn}</span>`;
+        function renderStaffTable() {
+            const tbody = document.getElementById('table-staff-list');
+            tbody.innerHTML = staffList.map(s => `
+                <tr class="hover:bg-slate-800/30">
+                    <td class="p-3 font-mono text-slate-400">${s.id}</td>
+                    <td class="p-3 font-medium text-white">${s.name}</td>
+                    <td class="p-3 text-slate-400">${s.dept}</td>
+                    <td class="p-3 text-right">
+                        <button onclick="deleteStaff('${s.id}')" class="text-rose-400 hover:underline">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+            document.getElementById('stat-total-emp').innerText = staffList.length;
+        }
+
+        function deleteStaff(empId) {
+            staffList = staffList.filter(s => s.id !== empId);
+            renderStaffDropdown();
+            renderStaffTable();
+        }
+
+        // 渲染管理员所有报表数据
+        function renderRecordsTable() {
+            const tbody = document.getElementById('table-admin-records');
+            let totalOvertime = 0;
+            let normalCount = 0;
+            let lateCount = 0;
+
+            tbody.innerHTML = attendanceRecords.map(r => {
+                totalOvertime += r.overtime;
+                if (r.status === '正常') normalCount++;
+                if (r.status === '迟到') lateCount++;
 
                 return `
-                    <tr class="hover:bg-slate-800/30 transition">
-                        <td class="p-3 font-semibold text-slate-200">${r.empName}</td>
-                        <td class="p-3 text-slate-400">${r.dept} <br/><span class="text-[10px] text-slate-500">${r.empId}</span></td>
+                    <tr class="hover:bg-slate-800/30">
+                        <td class="p-3 font-medium text-white">${r.name}</td>
+                        <td class="p-3 text-slate-400 font-mono">${r.dept} (${r.empId})</td>
                         <td class="p-3 font-mono text-slate-200">${r.clockIn}</td>
                         <td class="p-3 font-mono text-slate-200">${r.clockOut}</td>
-                        <td class="p-3">${methodBadge}</td>
-                        <td class="p-3">${statusBadge}</td>
-                        <td class="p-3 font-bold text-slate-200">${r.workHours} 小时</td>
-                        <td class="p-3 font-bold ${r.overtimeHours > 0 ? 'text-emerald-400' : 'text-slate-400'}">${r.overtimeHours} 小时</td>
-                        <td class="p-3 text-right text-slate-400 font-mono text-[11px]">${r.proof}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20">${r.mode}</span></td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] ${r.status === '正常' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}">${r.status}</span></td>
+                        <td class="p-3 font-mono font-bold text-white">${r.workHours} 小时</td>
+                        <td class="p-3 font-mono font-bold text-emerald-400">${r.overtime} 小时</td>
+                        <td class="p-3 text-slate-400">
+                            ${r.photo ? `<button onclick="viewPhoto('${r.photo}')" class="text-blue-400 underline">查看照片</button>` : r.proof}
+                        </td>
                     </tr>
                 `;
             }).join('');
+
+            document.getElementById('stat-normal').innerText = normalCount;
+            document.getElementById('stat-late').innerText = lateCount;
+            document.getElementById('stat-overtime').innerText = `${totalOvertime.toFixed(1)}h`;
         }
 
-        // 保存考勤规则
-        function saveSystemRules(e) {
-            e.preventDefault();
-            rules.standardIn = document.getElementById('cfg-standard-in').value;
-            rules.standardOut = document.getElementById('cfg-standard-out').value;
-            rules.lunchRestHours = parseFloat(document.getElementById('cfg-lunch-rest').value) || 0;
-            rules.allowedRadiusMeters = parseInt(document.getElementById('cfg-allowed-radius').value) || 100;
-            rules.allowedWifiSSID = document.getElementById('cfg-allowed-wifi').value.trim();
-
-            saveData();
-            renderAllViews();
-            showToast("考勤标准与防作弊规则配置已成功保存！", "success");
+        function viewPhoto(dataUrl) {
+            document.getElementById('img-in-modal').src = dataUrl;
+            document.getElementById('modal-photo-view').classList.remove('hidden');
         }
 
-        // ==================== 8. 导出 CSV 报表 ====================
-
-        function exportReportCSV() {
-            if (records.length === 0) {
-                showToast("当前暂无考勤数据可供导出", "warning");
-                return;
-            }
-
-            let csvContent = "\uFEFF"; // UTF-8 BOM
-            csvContent += "记录ID,员工姓名,工号,部门,日期,上班打卡时间,下班打卡时间,打卡方式,签到状态,总工时(小时),加班时长(小时),防作弊凭证\n";
-
-            records.forEach(r => {
-                csvContent += `"${r.id}","${r.empName}","${r.empId}","${r.dept}","${r.date}","${r.clockIn}","${r.clockOut}","${r.method}","${r.statusIn}","${r.workHours}","${r.overtimeHours}","${r.proof}"\n`;
+        function exportCSV() {
+            let csv = '员工姓名,部门,工号,上班打卡,下班打卡,校验模式,考勤状态,在岗工时,加班时长\n';
+            attendanceRecords.forEach(r => {
+                csv += `${r.name},${r.dept},${r.empId},${r.clockIn},${r.clockOut},${r.mode},${r.status},${r.workHours},${r.overtime}\n`;
             });
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
-            link.setAttribute('href', url);
-            link.setAttribute('download', `员工考勤加班汇总表_${getTodayDateStr()}.csv`);
-            document.body.appendChild(link);
+            link.href = URL.createObjectURL(blob);
+            link.download = `考勤数据明细_${new Date().toISOString().split('T')[0]}.csv`;
             link.click();
-            document.body.removeChild(link);
-            showToast("考勤报表已导出为 CSV 格式", "success");
-        }
-
-        // ==================== 9. Toast 提示框 ====================
-
-        function showToast(msg, type = 'info') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            
-            let colorClasses = "bg-slate-800 border-slate-700 text-slate-200";
-            let icon = "info";
-
-            if (type === 'success') {
-                colorClasses = "bg-emerald-950/90 border-emerald-700/80 text-emerald-200 shadow-lg shadow-emerald-950/50";
-                icon = "check-circle";
-            } else if (type === 'error') {
-                colorClasses = "bg-rose-950/90 border-rose-700/80 text-rose-200 shadow-lg shadow-rose-950/50";
-                icon = "x-circle";
-            } else if (type === 'warning') {
-                colorClasses = "bg-amber-950/90 border-amber-700/80 text-amber-200 shadow-lg shadow-amber-950/50";
-                icon = "alert-triangle";
-            }
-
-            toast.className = `p-3 rounded-xl border text-xs font-medium flex items-center space-x-2 pointer-events-auto transition-all duration-300 transform translate-y-2 opacity-0 ${colorClasses}`;
-            toast.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 shrink-0"></i> <span>${msg}</span>`;
-
-            container.appendChild(toast);
-            lucide.createIcons();
-
-            setTimeout(() => {
-                toast.classList.remove('translate-y-2', 'opacity-0');
-            }, 10);
-
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
         }
     </script>
 </body>
